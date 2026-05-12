@@ -1,72 +1,67 @@
-# Make.com Scenario Setup Instructions
-# YouTube Channel Analyzer - Automation Flow
+# Make.com Scenario Setup
 
-## Scenario Name: "YouTube Channel Outlier Analyzer"
+## Quick Start
+The backend is ready at: `POST https://youtube-analyzer-red.vercel.app/api/make-webhook`
 
-## Step 1: Trigger - Watch Google Sheets
-Module: Google Sheets > Watch New Rows
-- Connection: Your Google account
-- Sheet: Create a Google Sheet with columns:
-  | URL |
-  |-----|
-  | https://youtube.com/@ChannelName |
-- Limit: 1 row at a time
+## Endpoints
 
-## Step 2: Action - Send to Analysis API
-Module: HTTP > Make a Request
-- URL: https://YOUR-VERCEL-APP.vercel.app/api/analyze
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `POST /api/make-webhook` | Token required | Make.com optimized webhook with flattened fields |
+| `POST /api/analyze` | None | Manual analysis via frontend |
+| `GET /api/health` | None | Health check |
+
+## Make.com Webhook Auth
+Header: `Authorization: Token LNhHBIzStIl1UPqbA4oDiXu9E2MQOsK6aeon3EE0Ft`
+
+## Flattened Response Fields (easy Make.com mapping)
+```
+channel_name       -> Text
+total_videos       -> Number
+average_views      -> Number
+outlier_count      -> Number
+top_outlier_title  -> Text
+top_outlier_ratio  -> Number
+top_outlier_views  -> Number
+top_outlier_link   -> URL
+top_title_analysis -> Text
+top_transcript_analysis -> Text
+outliers[]         -> Array (title, link, ratio, ai_analysis)
+```
+
+## Scenario Setup in Make.com
+
+### Step 1: Google Sheets Trigger
+- Module: Google Sheets > Watch New Rows
+- Spreadsheet: Create sheet with column "URL"
+- Add channel URLs like: https://youtube.com/@MrBeast
+
+### Step 2: HTTP Request
+- Module: HTTP > Make a Request
+- URL: https://youtube-analyzer-red.vercel.app/api/make-webhook
 - Method: POST
 - Headers:
-  Content-Type: application/json
-- Body type: Raw
-- Body content:
-  {
-    "url": "{{1.URL}}"
-  }
-  (Map from Google Sheets "URL" column)
+  - Content-Type: application/json
+  - Authorization: Token LNhHBIzStIl1UPqbA4oDiXu9E2MQOsK6aeon3EE0Ft
+- Body: { "url": "{{1.URL}}" }
 
-## Step 3: Parse Response
-Module: JSON > Parse JSON
-- JSON string: {{2.data}}  (from HTTP module output)
+### Step 3: Parse JSON
+- Module: JSON > Parse JSON
+- JSON string: {{2.data}}
 
-## Step 4: Send Telegram Alert (Optional)
-Module: Telegram Bot > Send a Message
+### Step 4: Telegram Alert
+- Module: Telegram Bot > Send a Message
 - Chat ID: Your chat/group ID
 - Text:
   Channel: {{3.channel_name}}
-  Outliers Found: {{length(3.outliers)}}
-  {{#each 3.outliers}}
-  - {{title}} ({{ratio}}x avg)
-  {{/each}}
+  Avg Views: {{3.average_views}}
+  Outliers: {{3.outlier_count}}
+  Top: {{3.top_outlier_title}} ({{3.top_outlier_ratio}}x)
+  Link: {{3.top_outlier_link}}
 
-## Step 5: Update Google Sheets with Results (Optional)
-Module: Google Sheets > Update a Row
-- Spreadsheet ID: Same sheet
-- Update cells with: outlier count, top video title, top ratio
-
-## JSON Response Structure from API
-{
-  "status": "success",
-  "channel_name": "...",
-  "total_videos_analyzed": 50,
-  "average_views": 5000000,
-  "outliers": [
-    {
-      "title": "...",
-      "link": "https://youtube.com/watch?v=...",
-      "thumbnail": "...",
-      "views": 25000000,
-      "avg_views": 5000000,
-      "ratio": 5.0,
-      "title_analysis": "...",
-      "transcript_analysis": "..."
-    }
-  ]
-}
-
-## Webhook Alternative
-Instead of Google Sheets trigger, use:
-Module: Webhook > Custom Webhook
-- This gives you a unique webhook URL
-- POST to it with {"url": "channel_url"}
-- Then use the same HTTP + Telegram pipeline
+## Alternative: Webhook Trigger
+Make.com also provides a custom webhook URL you can use instead of Google Sheets:
+- Module: Webhook > Custom Webhook
+- Copy the generated URL
+- POST to it with: {"url": "https://youtube.com/@Channel"}
+- Chain to HTTP module above
