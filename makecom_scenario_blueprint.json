@@ -1,0 +1,46 @@
+{
+  "name": "YouTube Channel Outlier Analyzer",
+  "flow": [
+    {
+      "id": 1,
+      "module": "google-sheets:watchRows",
+      "position": { "x": 100, "y": 100 },
+      "parameters": {
+        "spreadsheetId": "YOUR_SHEET_ID_HERE",
+        "sheetName": "Sheet1",
+        "limit": 1
+      }
+    },
+    {
+      "id": 2,
+      "module": "http:ActionSendData",
+      "position": { "x": 400, "y": 100 },
+      "parameters": {
+        "url": "https://youtube-analyzer-red.vercel.app/api/make-webhook",
+        "method": "post",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Token LNhHBIzStIl1UPqbA4oDiXu9E2MQOsK6aeon3EE0Ft"
+        },
+        "body": "{ \"url\": \"{{1.URL}}\" }"
+      }
+    },
+    {
+      "id": 3,
+      "module": "tools:parseJSON",
+      "position": { "x": 700, "y": 100 },
+      "parameters": {
+        "jsonString": "{{2.data}}"
+      }
+    },
+    {
+      "id": 4,
+      "module": "telegramBot:sendMessage",
+      "position": { "x": 1000, "y": 100 },
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "\u26a1 New Outlier Analysis\n\nChannel: {{3.channel_name}}\nOutliers Found: {{3.outlier_count}}\n\n{{#each 3.outliers}}\n{{add @index 1}}. {{title}} ({{ratio}}x)\n{{/each}}"
+      }
+    }
+  ]
+}
